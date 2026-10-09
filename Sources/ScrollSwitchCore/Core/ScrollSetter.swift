@@ -140,4 +140,10 @@ public final class MemoryScrollSetter: ScrollSetting {
     public func reset() {
         applied.removeAll()
     }
+
+    /// Ages the last write so a change notification is no longer mistaken for our own
+    /// echo. Lets tests exercise the manual-override path without sleeping.
+    public func pretendLastWriteWasLongAgo() {
+        lastWriteByUs = .distantPast
+    }
 }
