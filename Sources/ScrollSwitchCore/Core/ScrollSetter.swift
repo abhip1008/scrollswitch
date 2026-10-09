@@ -56,28 +56,34 @@ public final class ScrollSetter: ScrollSetting {
     public private(set) var resolvedSymbol: String?
 
     public init() {
-        var fn: SetSwipeFn?
-        var lastError = "PreferencePanesSupport could not be opened"
+        // Everything lands in locals first: a class initialiser should not be touching
+        // self before the stored let is assigned.
+        var resolved: SetSwipeFn?
+        var path: String?
+        var symbol: String?
+        var failure = "PreferencePanesSupport could not be opened"
 
-        for path in Self.frameworkPaths {
-            guard let handle = dlopen(path, RTLD_LAZY) else {
-                if let err = dlerror() { lastError = String(cString: err) }
+        search: for candidatePath in Self.frameworkPaths {
+            guard let handle = dlopen(candidatePath, RTLD_LAZY) else {
+                if let message = dlerror() { failure = String(cString: message) }
                 continue
             }
-            for symbol in Self.symbolNames {
-                guard let sym = dlsym(handle, symbol) else { continue }
-                fn = unsafeBitCast(sym, to: SetSwipeFn.self)
-                resolvedPath = path
-                resolvedSymbol = symbol
-                break
+            for candidateSymbol in Self.symbolNames {
+                guard let address = dlsym(handle, candidateSymbol) else { continue }
+                resolved = unsafeBitCast(address, to: SetSwipeFn.self)
+                path = candidatePath
+                symbol = candidateSymbol
+                break search
             }
-            if fn != nil { break }
-            lastError = "Opened \(path) but found no setSwipeScrollDirection symbol"
+            failure = "Opened \(candidatePath) but found no setSwipeScrollDirection symbol"
         }
 
-        setSwipe = fn
-        unsupportedReason = fn == nil ? lastError : nil
+        setSwipe = resolved
+        resolvedPath = path
+        resolvedSymbol = symbol
+        unsupportedReason = resolved == nil ? failure : nil
     }
+
 
     public var isSupported: Bool { setSwipe != nil }
 

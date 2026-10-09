@@ -103,13 +103,14 @@ final class DockDetectorRuleTests: XCTestCase {
         )
     }
 
+
     func testBuiltInHardwareIsNeverADockSignal() {
         var settings = Settings()
         settings.rule = .anyExternalMouse
 
-        // The coordinator filters built-ins out before building a snapshot, so an empty
-        // external list is what the detector should see when only the trackpad is there.
-        XCTAssertFalse(builtInTrackpad.isBuiltIn == false)
+        // The coordinator filters built-ins out before building a snapshot, so the
+        // detector should see an empty external list when only the trackpad is present.
+        XCTAssertTrue(builtInTrackpad.isBuiltIn)
         XCTAssertFalse(DockDetector.isDocked(snapshot: .empty, settings: settings))
     }
 }

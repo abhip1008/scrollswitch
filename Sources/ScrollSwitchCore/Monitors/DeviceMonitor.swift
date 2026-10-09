@@ -29,21 +29,23 @@ public struct MouseInfo: Hashable, Sendable, Identifiable {
 ///
 /// It only ever asks the IORegistry what exists -- it never calls IOHIDManagerOpen, so
 /// macOS does not demand Input Monitoring permission.
+///
+/// The IOKit notification is registered for every IOHIDDevice rather than a usage-filtered
+/// subset, because a mouse does not reliably advertise itself in PrimaryUsage. Pointers are
+/// picked out when the registry is read, and an event that leaves the pointer list
+/// unchanged (a keyboard being plugged in, say) is swallowed rather than reported.
 public final class DeviceMonitor {
     public var onChange: (([MouseInfo]) -> Void)?
 
-    // HID usage page 0x01 is Generic Desktop; usage 0x02 is Mouse, 0x01 is Pointer.
-    private static let genericDesktopPage = 0x01
-    private static let usagesToWatch = [0x02, 0x01]
-
-    // Raw IORegistry key names, so this file needs no IOKit.hid constants.
+    // HID usage page 0x01 is Generic Desktop; usage 0x02 is Mouse and 0x01 is Pointer.
     private static let hidDeviceClass = "IOHIDDevice"
-    private static let usagePageKey = "PrimaryUsagePage"
-    private static let usageKey = "PrimaryUsage"
+    private static let genericDesktopPage = 1
+    private static let pointerUsages: Set<Int> = [1, 2]
 
     private let queue = DispatchQueue(label: "com.abhirampurohit.ScrollSwitch.devices")
     private var port: IONotificationPortRef?
     private var iterators: [io_iterator_t] = []
+    private var lastSeen: [MouseInfo]?
 
     public init() {}
 
@@ -54,24 +56,23 @@ public final class DeviceMonitor {
         port = notificationPort
 
         let refcon = Unmanaged.passUnretained(self).toOpaque()
-        for usage in Self.usagesToWatch {
-            for type in [kIOMatchedNotification, kIOTerminatedNotification] {
-                guard let match = Self.matchingDictionary(usage: usage) else { continue }
-                var iterator: io_iterator_t = 0
-                let result = IOServiceAddMatchingNotification(
-                    notificationPort,
-                    type,
-                    match,
-                    deviceNotificationCallback,
-                    refcon,
-                    &iterator
-                )
-                guard result == KERN_SUCCESS else { continue }
-                // Draining arms the notification; without this it never fires.
-                drain(iterator)
-                iterators.append(iterator)
-            }
+        for type in [kIOMatchedNotification, kIOTerminatedNotification] {
+            var iterator: io_iterator_t = 0
+            let result = IOServiceAddMatchingNotification(
+                notificationPort,
+                type,
+                IOServiceMatching(Self.hidDeviceClass),
+                deviceNotificationCallback,
+                refcon,
+                &iterator
+            )
+            guard result == KERN_SUCCESS else { continue }
+            // Draining arms the notification; without this it never fires.
+            drain(iterator)
+            iterators.append(iterator)
         }
+
+        lastSeen = snapshot()
     }
 
     public func stop() {
@@ -85,33 +86,41 @@ public final class DeviceMonitor {
 
     /// Every pointing device currently attached, built-in trackpad included.
     public func snapshot() -> [MouseInfo] {
+        var iterator: io_iterator_t = 0
+        let result = IOServiceGetMatchingServices(
+            kIOMainPortDefault,
+            IOServiceMatching(Self.hidDeviceClass),
+            &iterator
+        )
+        guard result == KERN_SUCCESS else { return [] }
+        defer { IOObjectRelease(iterator) }
+
         var found: [MouseInfo] = []
-        for usage in Self.usagesToWatch {
-            guard let match = Self.matchingDictionary(usage: usage) else { continue }
-            var iterator: io_iterator_t = 0
-            guard IOServiceGetMatchingServices(kIOMainPortDefault, match, &iterator) == KERN_SUCCESS
-            else { continue }
-            var service = IOIteratorNext(iterator)
-            while service != 0 {
-                if let info = Self.describe(service) { found.append(info) }
-                IOObjectRelease(service)
-                service = IOIteratorNext(iterator)
-            }
-            IOObjectRelease(iterator)
-        }
-        // A device can advertise both Mouse and Pointer usage, so it shows up twice.
         var seen = Set<String>()
-        return found.filter { seen.insert($0.id).inserted }
+        var service = IOIteratorNext(iterator)
+        while service != 0 {
+            if let info = Self.describePointer(service), seen.insert(info.id).inserted {
+                found.append(info)
+            }
+            IOObjectRelease(service)
+            service = IOIteratorNext(iterator)
+        }
+        return found
     }
 
     public func externalMice() -> [MouseInfo] {
-        snapshot().filter { !$0.isBuiltIn }
+        snapshot().filter { mouse in !mouse.isBuiltIn }
     }
 
     fileprivate func handleNotification(_ iterator: io_iterator_t) {
         drain(iterator)
         let mice = snapshot()
-        DispatchQueue.main.async { [weak self] in self?.onChange?(mice) }
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            guard self.lastSeen != mice else { return }
+            self.lastSeen = mice
+            self.onChange?(mice)
+        }
     }
 
     private func drain(_ iterator: io_iterator_t) {
@@ -122,19 +131,18 @@ public final class DeviceMonitor {
         }
     }
 
-    private static func matchingDictionary(usage: Int) -> CFMutableDictionary? {
-        guard let dictionary = IOServiceMatching(hidDeviceClass) else { return nil }
-        let mutable = dictionary as NSMutableDictionary
-        mutable[usagePageKey] = genericDesktopPage
-        mutable[usageKey] = usage
-        return dictionary
-    }
-
-    private static func describe(_ service: io_service_t) -> MouseInfo? {
+    private static func describePointer(_ service: io_service_t) -> MouseInfo? {
         func property(_ key: String) -> Any? {
             IORegistryEntryCreateCFProperty(service, key as CFString, kCFAllocatorDefault, 0)?
                 .takeRetainedValue()
         }
+
+        let isPointer = pointerUsageFound(
+            primaryPage: property("PrimaryUsagePage") as? NSNumber,
+            primaryUsage: property("PrimaryUsage") as? NSNumber,
+            usagePairs: property("DeviceUsagePairs") as? [[String: Any]]
+        )
+        guard isPointer else { return nil }
 
         let vendor = (property("VendorID") as? NSNumber)?.intValue ?? 0
         let product = (property("ProductID") as? NSNumber)?.intValue ?? 0
@@ -142,18 +150,41 @@ public final class DeviceMonitor {
         let transport = (property("Transport") as? String) ?? "unknown"
 
         // Built-In is missing on some devices, so fall back to the transport: the
-        // internal trackpad talks over SPI or the old-style FIFO bus, never USB or BT.
+        // internal trackpad talks over SPI or the old FIFO bus, never USB or Bluetooth.
         let flagged = (property("Built-In") as? NSNumber)?.boolValue
         let internalBus = ["SPI", "FIFO"].contains(transport)
-        let isBuiltIn = flagged ?? internalBus
 
         return MouseInfo(
             vendorID: vendor,
             productID: product,
             name: name,
             transport: transport,
-            isBuiltIn: isBuiltIn
+            isBuiltIn: flagged ?? internalBus
         )
+    }
+
+    /// Some mice only declare Mouse usage inside DeviceUsagePairs, so both places count.
+    private static func pointerUsageFound(
+        primaryPage: NSNumber?,
+        primaryUsage: NSNumber?,
+        usagePairs: [[String: Any]]?
+    ) -> Bool {
+        if primaryPage?.intValue == genericDesktopPage,
+           let usage = primaryUsage?.intValue,
+           pointerUsages.contains(usage) {
+            return true
+        }
+
+        for pair in usagePairs ?? [] {
+            let page = (pair["DeviceUsagePage"] as? NSNumber)?.intValue
+            guard page == genericDesktopPage else { continue }
+            if let usage = (pair["DeviceUsage"] as? NSNumber)?.intValue,
+               pointerUsages.contains(usage) {
+                return true
+            }
+        }
+
+        return false
     }
 }
 
