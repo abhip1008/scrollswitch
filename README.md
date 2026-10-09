@@ -65,3 +65,40 @@ The private API, the distributed notification, and the sandbox gotcha come from
 ## License
 
 MIT. See `LICENSE`.
+
+## First run
+
+1. `make spike` -- this is Milestone 0. It reports whether the private function resolved,
+   flips your scroll direction for five seconds, then puts it back. If scrolling really
+   inverts during those five seconds, everything else will work.
+2. `make install` -- builds, signs, installs into `/Applications`, and launches it.
+3. Plug into your dock, then open the menu and choose **Learn My Dock**. That records the
+   displays and mouse that are attached right now and switches the rule from
+   "any external display" to "dock markers", so a projector in a classroom no longer
+   looks like your desk.
+4. Dock and undock once with **Show Log...** open to confirm the transitions.
+
+## Project layout
+
+```
+Sources/
+  ScrollSwitchCore/        no UI, fully unit testable
+    Core/                  Identity, Settings, ScrollSetter, Signals,
+                           DockDetector, ScrollController, Coordinator
+    Monitors/              DisplayMonitor, DeviceMonitor, LidMonitor, PowerMonitor
+    Support/               Logger, ScrollChangeWatcher, LaunchAtLogin, Notifier
+  ScrollSwitchApp/         @main, MenuBarExtra, Preferences, log viewer
+  APISpike/                Milestone 0 command-line probe
+Tests/ScrollSwitchTests/   rules, debounce, controller, settings, log
+Resources/Info.plist       LSUIElement = YES
+docs/                      the spec, milestone tracking, the test matrix
+```
+
+Only `ScrollSetter` touches the system setting, and only `ScrollController` calls it. That
+is what makes it safe to unit test the decision logic against a fake.
+
+## Documentation
+
+- `docs/ScrollSwitch-Spec.md` -- the specification this implements
+- `docs/MILESTONES.md` -- milestone and requirement coverage, and where it deviates
+- `docs/TESTING.md` -- the automated coverage plus the manual dock/undock matrix
