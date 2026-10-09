@@ -40,7 +40,7 @@ app: build bundle
 # SwiftPM emits a bare Mach-O binary. A menu bar app needs a real bundle so that
 # LSUIElement, the bundle identifier (UserNotifications, SMAppService) and the code
 # signature are all in place.
-bundle:
+bundle: build
 	@mkdir -p $(APP)/Contents/MacOS $(APP)/Contents/Resources
 	cp $(BIN) $(APP)/Contents/MacOS/ScrollSwitch
 	cp Resources/Info.plist $(APP)/Contents/Info.plist
