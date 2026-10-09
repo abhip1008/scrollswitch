@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>com.abhirampurohit.ScrollSwitch</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/Applications/ScrollSwitch.app/Contents/MacOS/ScrollSwitch</string>
+	</array>
+	<key>RunAtLoad</key>
+	<true/>
+	<!-- Restart only after an abnormal exit. Quit ScrollSwitch from the menu exits with
+	     status 0, so a deliberate quit stays quit instead of respawning forever. -->
+	<key>KeepAlive</key>
+	<dict>
+		<key>SuccessfulExit</key>
+		<false/>
+	</dict>
+	<!-- Only in a real logged-in GUI session; never at the login window. -->
+	<key>LimitLoadToSessionType</key>
+	<string>Aqua</string>
+	<key>ProcessType</key>
+	<string>Interactive</string>
+</dict>
+</plist>

@@ -102,3 +102,4 @@ is what makes it safe to unit test the decision logic against a fake.
 - `docs/ScrollSwitch-Spec.md` -- the specification this implements
 - `docs/MILESTONES.md` -- milestone and requirement coverage, and where it deviates
 - `docs/TESTING.md` -- the automated coverage plus the manual dock/undock matrix
+- `docs/RUNNING.md` -- how to verify it works and how to keep it running at login

@@ -15,6 +15,18 @@ final class AppEnvironment {
 }
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    /// Started twice -- a login item plus a LaunchAgent, say -- the app would put two
+    /// icons in the menu bar and fight itself. The second one in loses, and exits with a
+    /// success code so launchd treats it as a deliberate exit rather than a crash.
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        guard let identifier = Bundle.main.bundleIdentifier else { return }
+        let mine = ProcessInfo.processInfo.processIdentifier
+        let others = NSRunningApplication
+            .runningApplications(withBundleIdentifier: identifier)
+            .filter { application in application.processIdentifier != mine }
+        if !others.isEmpty { exit(0) }
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Belt and braces alongside LSUIElement: menu bar only, no Dock icon.
         NSApp.setActivationPolicy(.accessory)
