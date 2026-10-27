@@ -9,6 +9,13 @@ trackpad). The change applies live, with no logout and no trip to System Setting
 | At the desk, docked, lid closed | 1 or 2 | **OFF** (mouse scrolls the normal way) |
 | Away from the desk, lid open | 0 | **ON** (trackpad feels natural) |
 
+<p align="center"><img src="docs/images/demo.gif" alt="ScrollSwitch turns Natural scrolling off when monitors are plugged in and on when unplugged" width="720"></p>
+
+<p align="center">
+  <a href="https://github.com/abhip1008/scrollswitch/releases/latest"><b>Download for macOS</b></a> ·
+  macOS 13+ · Apple silicon and Intel · free and open source
+</p>
+
 ## Download and install
 
 Works on macOS 13 or newer, on Apple silicon and Intel Macs.
@@ -108,6 +115,25 @@ A pause badge means automatic switching is paused, and a dot means something wen
 | Natural scrolling when docked / undocked | OFF / ON by default, either can be changed |
 | Notifications | Off by default. Permission is asked only when you turn it on |
 | Open at login | On after the first launch from /Applications |
+
+## Why not Scroll Reverser, LinearMouse or Mos?
+
+Those are good apps, and they take a different approach: they leave Natural scrolling on
+and reverse each mouse-wheel event as it happens. Pick the one that fits how you work.
+
+| | ScrollSwitch | Scroll Reverser, LinearMouse, Mos, UnnaturalScrollWheels |
+|---|---|---|
+| How it works | Flips the real system setting when you dock or undock | Intercepts and reverses every scroll event |
+| Permissions | **None** | Accessibility |
+| Work while you scroll | **None**, it only acts on plug and unplug | Every scroll passes through the app |
+| Smooth-scrolling or free-spin mice | **Not affected** | Have to guess mouse vs trackpad per event, which can misfire |
+| Mouse and trackpad used at the same moment | No, one setting at a time | **Yes** |
+| Extra mouse features (acceleration, buttons, smooth scroll) | No | **Yes**, in LinearMouse and Mos |
+
+**Use ScrollSwitch** if your mouse lives at a desk, the trackpad is for when you are away
+from it (especially in clamshell mode), and you would rather not grant Accessibility
+access to anything. **Use one of the others** if you switch between the mouse and the
+trackpad within the same session, or want more mouse tuning.
 
 ## How it works
 
