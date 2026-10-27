@@ -106,10 +106,10 @@ public final class Controller: ObservableObject {
     }
 
     /// The real app wiring: private API toggler (or backup), live monitors.
-    public static func live(log: EventLog? = nil) -> Controller {
+    public static func live(store: SettingsStore = SettingsStore(), log: EventLog? = nil) -> Controller {
         let (toggler, warning) = ScrollTogglerFactory.makeBest()
         let usb = USBMonitor()
-        let controller = Controller(toggler: toggler, togglerWarning: warning, probe: LiveSystemProbe(usb: usb),
+        let controller = Controller(toggler: toggler, togglerWarning: warning, probe: LiveSystemProbe(usb: usb), store: store,
                                     notifier: Notifier(), log: log)
         controller.usbMonitor = usb
         controller.displayMonitor = DisplayMonitor()
