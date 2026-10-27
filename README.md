@@ -9,19 +9,69 @@ trackpad). The change applies live, with no logout and no trip to System Setting
 | At the desk, docked, lid closed | 1 or 2 | **OFF** (mouse scrolls the normal way) |
 | Away from the desk, lid open | 0 | **ON** (trackpad feels natural) |
 
-## Install
+## Download and install
 
-Requires macOS 13 or newer and the Xcode command-line tools.
+Works on macOS 13 or newer, on Apple silicon and Intel Macs.
+
+### Option 1: download the app (easiest)
+
+1. Go to the [**Releases page**](https://github.com/abhip1008/scrollswitch/releases/latest)
+   and download **`ScrollSwitch-1.0.0.zip`**.
+2. Double-click the zip to unzip it, then drag **ScrollSwitch.app** into your
+   **Applications** folder.
+3. The app is not notarized by Apple, so macOS blocks it the first time. Open **Terminal**
+   and run this once:
+
+   ```bash
+   xattr -dr com.apple.quarantine /Applications/ScrollSwitch.app
+   ```
+
+   (Or try to open it, then go to **System Settings › Privacy & Security** and click
+   **Open Anyway**.)
+4. Open **ScrollSwitch** from Applications. There is no window and no Dock icon. Look for
+   the new icon in the **menu bar** at the top right of the screen.
+
+### Option 2: build from source
+
+Needs Xcode or the Xcode command-line tools (`xcode-select --install`).
 
 ```bash
-make install     # builds, signs ad hoc, copies to /Applications, launches
+git clone https://github.com/abhip1008/scrollswitch.git
+cd scrollswitch
+make install     # builds, signs, copies to /Applications and launches it
 ```
 
-The first launch from `/Applications` registers ScrollSwitch to open at login (turn it off
-in Settings or in System Settings › General › Login Items). Update later by running
-`make install` again. `make uninstall` removes it.
+### After installing
 
-## Using it
+- ScrollSwitch **opens at login automatically** after the first launch from
+  /Applications. Turn that off in its Settings or in System Settings › General › Login Items.
+- **No permissions are needed.** It does not ask for Accessibility or Input Monitoring.
+- **To update**, quit it from the menu bar, replace the app in /Applications (or run
+  `make install` again) and open it.
+- **To uninstall**, quit it from the menu bar and drag it from Applications to the Trash
+  (or run `make uninstall`).
+
+## How to use it
+
+**There is nothing to set up.** Leave it running:
+
+1. **Plug in your monitors** (KVM, HDMI, a dock, anything). About 2 seconds later Natural
+   scrolling turns **OFF**, so the mouse wheel scrolls the normal way.
+2. **Unplug and use the laptop on its own.** About 2 seconds later (3 to 4 seconds if the
+   Mac was asleep) Natural scrolling turns **ON** for the trackpad.
+
+The menu bar icon shows the current state at a glance: a **mouse** means Natural
+scrolling is OFF and a **hand** means it is ON.
+
+Optional, if you plug into other screens (a projector, a TV, a monitor at school or work):
+while at your own desk, click the menu bar icon, choose **Save current setup as my
+desk**, then in **Settings…** set **Count as docked when** to **My desk is connected**.
+Other screens will then leave Natural scrolling alone.
+
+If you change the setting yourself in System Settings, ScrollSwitch leaves your choice
+alone until the next time you plug in or unplug.
+
+## The menu
 
 The menu bar icon is a **mouse** when Natural scrolling is OFF and a **hand** when it is ON.
 A pause badge means automatic switching is paused, and a dot means something went wrong
@@ -139,6 +189,7 @@ make cli
 ```bash
 make test     # unit tests: every evaluator rule, pause modes, debounce, edge triggering
 make spike    # Phase 0: flips Natural scrolling once on this Mac (run again to flip back)
+make release  # universal app zipped as build/ScrollSwitch-<version>.zip for a GitHub Release
 log stream --predicate 'subsystem == "com.abhirampurohit.scrollswitch"' --info
 ```
 
