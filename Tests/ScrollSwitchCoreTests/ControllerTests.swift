@@ -239,6 +239,18 @@ final class ControllerTests: XCTestCase {
         XCTAssertTrue(t.value)
     }
 
+    func testRenamingDeskDoesNotReapply() async {
+        let probe = FakeProbe(Fixture.snap(Fixture.lg), lidOpen: false)
+        let (c, t) = make(natural: true, probe: probe)
+        c.start()
+        defer { c.stop() }
+        await wait(0.15)
+        t.value = true // manual change while docked
+        c.settings.desk.name = "Home desk"
+        await wait(0.5)
+        XCTAssertTrue(t.value)
+    }
+
     func testStuckSetRetriesThenFlagsFailure() async {
         let probe = FakeProbe(Fixture.snap(Fixture.lg), lidOpen: false)
         let (c, t) = make(natural: true, probe: probe)

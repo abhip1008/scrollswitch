@@ -373,7 +373,9 @@ public final class Controller: ObservableObject {
         store.save(settings)
         guard !suppressReaction, started else { return }
         // Rules or preferred values changed: apply the new answer now.
-        let decisionInputsChanged = old.rule != settings.rule || old.desk != settings.desk
+        // Renaming the desk is not a decision input.
+        let decisionInputsChanged = old.rule != settings.rule
+            || old.desk.displays != settings.desk.displays || old.desk.usbDevices != settings.desk.usbDevices
             || old.lidOpenMeansUndocked != settings.lidOpenMeansUndocked
             || old.naturalWhenDocked != settings.naturalWhenDocked
             || old.naturalWhenUndocked != settings.naturalWhenUndocked
