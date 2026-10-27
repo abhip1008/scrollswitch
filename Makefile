@@ -2,6 +2,7 @@
 #
 #   make app        build/ScrollSwitch.app (release, ad-hoc signed)
 #   make install    copy to /Applications and launch it
+#   make demo       regenerate docs/images/demo.gif
 #   make release    universal (Apple silicon + Intel) app zipped for a GitHub Release
 #   make test       unit tests
 #   make spike      Phase 0 live-toggle spike (flips Natural scrolling once)
@@ -19,7 +20,7 @@ ARCH_FLAGS   ?=
 VERSION      := $(shell /usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' Resources/Info.plist)
 BIN_DIR       = $(shell swift build -c $(CONFIG) $(ARCH_FLAGS) --show-bin-path)
 
-.PHONY: all build app install uninstall run test cli spike icon release clean
+.PHONY: all build app install uninstall run test cli spike icon release demo clean
 
 all: app
 
@@ -75,6 +76,15 @@ release:
 	rm -f "$(BUILD_DIR)/$(APP_NAME)-$(VERSION).zip"
 	cd $(BUILD_DIR) && ditto -c -k --keepParent $(APP_NAME).app $(APP_NAME)-$(VERSION).zip
 	@echo "Built $(BUILD_DIR)/$(APP_NAME)-$(VERSION).zip"
+
+demo:
+	mkdir -p $(BUILD_DIR)
+	swiftc scripts/demo/main.swift Sources/ScrollSwitch/UI/MenuBarIcon.swift -o $(BUILD_DIR)/make-demo
+	rm -rf $(BUILD_DIR)/demo-frames
+	$(BUILD_DIR)/make-demo $(BUILD_DIR)/demo-frames
+	ffmpeg -loglevel error -y -framerate 12 -i $(BUILD_DIR)/demo-frames/f%03d.png \
+		-vf "scale=720:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=128[p];[b][p]paletteuse=dither=none" \
+		-loop 0 docs/images/demo.gif
 
 icon:
 	rm -rf $(BUILD_DIR)/AppIcon.iconset
