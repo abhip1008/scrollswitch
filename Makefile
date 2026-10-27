@@ -2,6 +2,7 @@
 #
 #   make app        build/ScrollSwitch.app (release, ad-hoc signed)
 #   make install    copy to /Applications and launch it
+#   make release    universal (Apple silicon + Intel) app zipped for a GitHub Release
 #   make test       unit tests
 #   make spike      Phase 0 live-toggle spike (flips Natural scrolling once)
 #   make cli        build scrollswitch-cli
@@ -14,14 +15,16 @@ BUILD_DIR    := build
 APP          := $(BUILD_DIR)/$(APP_NAME).app
 INSTALL_DIR  ?= /Applications
 SIGN_ID      ?= -
-BIN_DIR       = $(shell swift build -c $(CONFIG) --show-bin-path)
+ARCH_FLAGS   ?=
+VERSION      := $(shell /usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' Resources/Info.plist)
+BIN_DIR       = $(shell swift build -c $(CONFIG) $(ARCH_FLAGS) --show-bin-path)
 
-.PHONY: all build app install uninstall run test cli spike icon clean
+.PHONY: all build app install uninstall run test cli spike icon release clean
 
 all: app
 
 build:
-	swift build -c $(CONFIG) --product $(APP_NAME)
+	swift build -c $(CONFIG) $(ARCH_FLAGS) --product $(APP_NAME)
 
 app: build
 	rm -rf "$(APP)"
@@ -65,6 +68,13 @@ spike:
 	swiftc Spike/display-watch.swift -o Spike/bin/display-watch
 	swiftc Spike/backup-a-test.swift -o Spike/bin/backup-a-test
 	Spike/bin/toggle-test
+
+release:
+	$(MAKE) app ARCH_FLAGS="--arch arm64 --arch x86_64"
+	lipo -info "$(APP)/Contents/MacOS/$(APP_NAME)"
+	rm -f "$(BUILD_DIR)/$(APP_NAME)-$(VERSION).zip"
+	cd $(BUILD_DIR) && ditto -c -k --keepParent $(APP_NAME).app $(APP_NAME)-$(VERSION).zip
+	@echo "Built $(BUILD_DIR)/$(APP_NAME)-$(VERSION).zip"
 
 icon:
 	rm -rf $(BUILD_DIR)/AppIcon.iconset
